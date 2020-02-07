@@ -15,19 +15,18 @@ white = (255, 255, 255)
 red = (255, 0, 0)
 yellow = (0, 255, 0)
 
+# Player and heuristics variables
 PLAYER = 0
 player_stone = 1
 AI = 1
 ai_stone = 2
+part_length = 4
+available = 0
 
 # Game variables
 game_over = False
 move_count = 0
 selection = 0
-
-# Heuristics variables
-part_length = 4
-available = 0
 
 # Pygame initialization
 pygame.init()
@@ -121,7 +120,7 @@ def eval_part(part, stone):
 
     # Enemy has 3 in a row - thus penalizing this with negative score
     if part.count(enemy_stone) == 3 and part.count(available) == 1:
-        score -= 4
+        score -= 10
     
     return score
 
@@ -136,7 +135,7 @@ def board_heuristics(board, stone):
     # scoring the center postions since from them better future chances arise
     center_arr = [int(i) for i in list(board[:,columns//2])]
     num_center = center_arr.count(stone)
-    score += num_center * 3
+    score += num_center * 1
 
 
     # horizontal
@@ -168,24 +167,6 @@ def board_heuristics(board, stone):
     return score
 
 
-def choose_best_move(board, stone):
-    '''
-    Does a move on every possible column and returns the column
-    position best one based on the result of the heuristics
-    '''
-    possible_columns = get_possible_columns(board)
-    max_score = -math.inf
-    max_column = random.choice(possible_columns)
-    for c in possible_columns:
-        r = get_row_position(board, c)
-        board_copy = board.copy() # A new memory location has to be created
-        place_stone(board_copy, r, c, stone)
-        score = board_heuristics(board_copy, stone) # Get heuristic on the new board
-        if score > max_score:
-            max_score = score
-            max_column = c
-    return max_column
-
 def draw_board(board):
     '''
     Draws the current board to the pygame screen.
@@ -212,10 +193,13 @@ def terminal_node(board):
     return len(get_possible_columns(board)) == 0 or check_win(board, player_stone) or check_win(board, ai_stone)
 
 
-def minimax(board, depth, maximizing_player):
+def minimax(board, depth, alpha, beta, maximizing_player):
     '''
     Minimax implementation
     pseudocode: https://en.wikipedia.org/wiki/Minimax
+    pseudocode alpha, beta pruning: https://en.wikipedia.org/wiki/Alpha–beta_pruning
+    With alpha beta, additional to getting the max value we are evaluatin alpha, beta
+    https://www.youtube.com/watch?v=l-hh51ncgDI
     '''
     is_terminal = terminal_node(board)
     possible_columns = get_possible_columns(board)
@@ -234,28 +218,36 @@ def minimax(board, depth, maximizing_player):
         value = -math.inf
         column = random.choice(possible_columns)
 
+        # Build each child just in time with placing a stone in each possible column
         for col in possible_columns:
             row = get_row_position(board,col)
             current_board = board.copy()
             place_stone(current_board, row, col, ai_stone)
-            current_score = minimax(current_board, depth-1, False)[1] # recursive call
+            current_score = minimax(current_board, depth-1, alpha, beta, False)[1] # recursive call
             if current_score > value:
                 value = current_score
                 column = col
+            alpha = max(alpha, value)
+            if alpha >= beta: # Pruning - Already better option available
+                break 
         return (column, value)
 
     else:
         value = math.inf
         column = random.choice(possible_columns)
 
+        # Build each child just in time with placing a stone in each possible column
         for col in possible_columns:
             row = get_row_position(board,col)
             current_board = board.copy()
             place_stone(current_board, row, col, player_stone)
-            current_score = minimax(current_board, depth-1, True)[1] # recursive call
+            current_score = minimax(current_board, depth-1, alpha, beta, True)[1] # recursive call
             if current_score < value:
                 value = current_score
                 column = col
+            beta = min(beta, value)
+            if alpha >= beta:
+                break # Pruning - Already better option available
         return (column, value)
 
 
@@ -304,7 +296,7 @@ while not game_over:
     #AI move
     if move_count == AI and not game_over:
         # col = choose_best_move(board, ai_stone)
-        col, score = minimax(board, 4, True)
+        col, score = minimax(board, 6, -math.inf, math.inf, True) # Initial call, Worst possible alpha, beta
 
         if column_possible(board, col):            
             place_stone(board, get_row_position(board, col) , col, ai_stone)
