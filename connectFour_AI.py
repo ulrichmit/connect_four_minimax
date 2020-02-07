@@ -4,7 +4,7 @@ import pygame
 import sys
 import random
 
-# Graphics
+# Graphics variables
 rows = 6
 columns = 7
 size = 100
@@ -51,14 +51,13 @@ def place_stone(board, row, col, stone):
 
 def column_possible(board, col):
     '''
-    Returns a bool if a stone can be places in the col column.
+    Returns a bool if a stone can be placed in the col column.
     '''
     return board[rows-1][col] == 0
 
 def get_possible_columns(board):
     '''
     Returns an array of all possible locations to place a stone.
-    Where the columns are not full.
     '''
     possible_locations = []
     for c in range(columns):
@@ -109,16 +108,13 @@ def check_win(boad, stone):
 
 def eval_part(part, stone):
     '''
-    Returns a value based on the number of stones in the givven part.
-    The more sotones and available positions the better the score.
-    If the enemy has already a 3 in a row and the fourth is available - Give negative reward!
+    Returns a score value based on the number of stones in the given part.
     '''
     score = 0
     enemy_stone = player_stone
     if stone == player_stone:
         enemy_stone = ai_stone
 
-    # Positives scores of the current part
     if part.count(stone) == 4:
         score += 100
     elif part.count(stone) == 3 and part.count(available) == 1:
@@ -126,7 +122,7 @@ def eval_part(part, stone):
     elif part.count(stone) == 2 and part.count(available) == 2:
         score += 5
     
-    # Enemy has 3 in a row - negative score - all other moves are better
+    # Enemy has 3 in a row - negative score
     if part.count(enemy_stone) == 3 and part.count(available) == 1:
         score -= 12
     
@@ -134,15 +130,14 @@ def eval_part(part, stone):
 
 def board_heuristics(board, stone):
     '''
-    Evaluates the score of the givven board for the given player
-    Using list comprehensions to check parts of 4 neigbouring spots
-    Part evaluaiton is done in eval_part function
+    Evaluates the score of given board.
+    Using list comprehensions to check parts of 4 neigbouring spots.
     '''
     score = 0
-    # scoring the center postions since from them better chances arise
+    # scoring for center positions
     center_arr = [int(i) for i in list(board[:,columns//2])]
     num_center = center_arr.count(stone)
-    #score += num_center * 1
+    score += num_center * 1
 
     # horizontal
     for r in range(rows):
@@ -174,22 +169,17 @@ def board_heuristics(board, stone):
 
 def terminal_node(board):
     '''
-    Returns true if board is winning for either the Huma or AI or the board is full
+    Returns true if the given board results in a terminal node.
     '''
     return len(get_possible_columns(board)) == 0 or check_win(board, player_stone) or check_win(board, ai_stone)
 
-
 def minimax(board, depth, alpha, beta, maximizing_player):
     '''
-    Minimax implementation
-    pseudocode: https://en.wikipedia.org/wiki/Minimax
-    pseudocode alpha, beta pruning: https://en.wikipedia.org/wiki/Alpha–beta_pruning
-    With alpha beta, additional to getting the max value we are evaluatin alpha, beta
-    https://www.youtube.com/watch?v=l-hh51ncgDI
+    pseudocode general minimax: https://en.wikipedia.org/wiki/Minimax
+    pseudocode alpha/beta pruning: https://en.wikipedia.org/wiki/Alpha–beta_pruning
     '''
     is_terminal = terminal_node(board)
     possible_columns = get_possible_columns(board)
-
     if is_terminal:            
         if check_win(board, ai_stone):
             return (None, math.inf) # AI won
@@ -198,40 +188,40 @@ def minimax(board, depth, alpha, beta, maximizing_player):
         else:
             return (None, 0) # draw         
     elif depth == 0:
-        return (None, board_heuristics(board, ai_stone)) # Last board in the branch - return heuristic
+        return (None, board_heuristics(board, ai_stone)) # Leaf node - return heuristic
 
     if maximizing_player:
         value = -math.inf
         column = random.choice(possible_columns)
-        # Build each child just in time with placing a stone in each possible column
+        
         for col in possible_columns:
             row = get_row_position(board,col)
             current_board = board.copy()
             place_stone(current_board, row, col, ai_stone)
-            current_score = minimax(current_board, depth-1, alpha, beta, False)[1] # recursive call
+            current_score = minimax(current_board, depth-1, alpha, beta, False)[1]
             if current_score > value:
                 value = current_score
                 column = col
             alpha = max(alpha, value)
-            if alpha >= beta: # Pruning - Already better option available
+            if alpha >= beta: # Pruning
                 break 
         return (column, value)
 
     else:
         value = math.inf
         column = random.choice(possible_columns)
-        # Build each child just in time with placing a stone in each possible column
+        
         for col in possible_columns:
             row = get_row_position(board,col)
             current_board = board.copy()
             place_stone(current_board, row, col, player_stone)
-            current_score = minimax(current_board, depth-1, alpha, beta, True)[1] # recursive call
+            current_score = minimax(current_board, depth-1, alpha, beta, True)[1]
             if current_score < value:
                 value = current_score
                 column = col
             beta = min(beta, value)
             if alpha >= beta:
-                break # Pruning - Already better option available
+                break # Pruning
         return (column, value)
 
 
@@ -257,6 +247,7 @@ def draw_board(board):
 
 board = create_game_board()
 draw_board(board)
+#move_count = random.randint(0,1)
 move_count = AI
 
 # Game Loop
@@ -285,9 +276,9 @@ while not game_over:
 
                     if check_win(board, player_stone):
                         game_over = True
-                        print("----------------------")
+                        print("------------------------")
                         print("HUMANITY won!!")
-                        print("----------------------")
+                        print("------------------------")
                     
                     move_count += 1
                     move_count = move_count % 2
@@ -302,37 +293,12 @@ while not game_over:
 
             if check_win(board, ai_stone):
                 game_over = True
-                print("----------------------")
+                print("------------------------")
                 print("AI won - We're doomed!!") 
-                print("----------------------")              
+                print("------------------------")              
 
             move_count += 1
             move_count = move_count % 2
             draw_board(board)
 
 print_board(board)
-
-
-
-
-
-
-
-# Discarded function
-def choose_best_move(board, stone):
-    '''
-    Does a move on every possible column and returns the column
-    position best one based on the result of the heuristics
-    '''
-    possible_columns = get_possible_columns(board)
-    max_score = -math.inf
-    max_column = random.choice(possible_columns)
-    for c in possible_columns:
-        r = get_row_position(board, c)
-        board_copy = board.copy() # A new memory location has to be created
-        place_stone(board_copy, r, c, stone)
-        score = board_heuristics(board_copy, stone) # Get heuristic on the new board
-        if score > max_score:
-            max_score = score
-            max_column = c
-    return max_column
