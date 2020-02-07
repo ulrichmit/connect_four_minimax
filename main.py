@@ -142,7 +142,7 @@ def board_heuristics(board, stone):
     # scoring the center postions since from them better chances arise
     center_arr = [int(i) for i in list(board[:,columns//2])]
     num_center = center_arr.count(stone)
-    score += num_center * 1
+    #score += num_center * 1
 
     # horizontal
     for r in range(rows):
